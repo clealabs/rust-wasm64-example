@@ -1,0 +1,5 @@
+[target.wasm64-unknown-unknown]
+rustflags = [
+  '--cfg', 'getrandom_backend="custom"',
+  "-C", "target-feature=+simd128",
+]
