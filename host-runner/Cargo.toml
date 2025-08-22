@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0"
-wasmtime = "*"   # "*" will use the latest published wasmtime crate; you can pin a version if you prefer
+wasmtime = "*"
+wasi-common = { version = "36", features = ["sync"] }
