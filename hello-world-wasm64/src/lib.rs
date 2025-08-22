@@ -132,6 +132,29 @@ pub fn test_e2e() {
     assert!(result.is_ok());
 }
 
+pub fn prove_example() {
+    let prover_input_json = include_str!("example_prover_input.json");
+    let prover_input: ProverInput =
+        serde_json::from_str(prover_input_json).expect("Failed to read prover input");
+    let msg = "Running prove...";
+    unsafe {
+        host_print(msg.as_ptr() as u64, msg.len() as u64);
+    }
+    let cairo_proof = prove(prover_input);
+    assert!(cairo_proof.is_ok());
+}
+
+pub fn verify_is_prime_7() {
+    let proof_json = include_str!("is_prime_proof_7.json");
+    let cairo_proof = serde_json::from_str(proof_json).expect("Failed to read cairo proof");
+    let msg = "Running verify...";
+    unsafe {
+        host_print(msg.as_ptr() as u64, msg.len() as u64);
+    }
+    let verdict = verify(cairo_proof, false);
+    assert!(verdict, "cairo proof verification failed");
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn run() {
     panic::set_hook(Box::new(hook));
@@ -146,4 +169,11 @@ pub extern "C" fn run() {
     }
 
     test_e2e();
+    // prove_example();
+    // verify_is_prime_7();
+
+    let msg = "Success!";
+    unsafe {
+        host_print(msg.as_ptr() as u64, msg.len() as u64);
+    }
 }
