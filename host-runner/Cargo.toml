@@ -1,0 +1,8 @@
+[package]
+name = "host-runner"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+wasmtime = "*"   # "*" will use the latest published wasmtime crate; you can pin a version if you prefer
