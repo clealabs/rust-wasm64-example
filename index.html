@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Run wasm64 in Chrome</title>
+  </head>
+  <body>
+    <h1>wasm64 test</h1>
+    <pre id="out"></pre>
+
+    <script>
+      let sharedMemory = null;
+      const out = document.getElementById("out");
+
+      function write(s) {
+        out.textContent += s + "\n";
+        console.log(s);
+      }
+
+      const imports = {
+        host: {
+          host_print: (ptr, len) => {
+            const p = Number(ptr); // ptr is BigInt
+            const l = Number(len);
+            if (!sharedMemory) {
+              write("ERROR: no memory yet");
+              return;
+            }
+            const bytes = new Uint8Array(sharedMemory.buffer, p, l);
+            const s = new TextDecoder().decode(bytes);
+            write(s);
+          },
+        },
+      };
+
+      (async () => {
+        try {
+          const { instance } = await WebAssembly.instantiateStreaming(
+            fetch(
+              "hello-world-wasm64/target/wasm64-unknown-unknown/release/hello_world_wasm64.wasm"
+            ),
+            imports
+          );
+
+          sharedMemory = instance.exports.memory;
+
+          if (typeof instance.exports.run === "function") {
+            instance.exports.run();
+          } else {
+            write("no run() export found");
+          }
+        } catch (e) {
+          write("instantiate error: " + e);
+          console.error(e);
+        }
+      })();
+    </script>
+  </body>
+</html>
