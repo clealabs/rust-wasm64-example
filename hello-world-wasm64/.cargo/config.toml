@@ -2,4 +2,5 @@
 rustflags = [
   '--cfg', 'getrandom_backend="custom"',
   "-C", "target-feature=+simd128",
+  "-C", "link-arg=--max-memory=17179869184",
 ]
