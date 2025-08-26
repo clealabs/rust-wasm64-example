@@ -20,7 +20,7 @@
       const imports = {
         host: {
           host_print: (ptr, len) => {
-            const p = Number(ptr); // ptr is BigInt
+            const p = Number(ptr);
             const l = Number(len);
             if (!sharedMemory) {
               write("ERROR: no memory yet");
@@ -29,6 +29,16 @@
             const bytes = new Uint8Array(sharedMemory.buffer, p, l);
             const s = new TextDecoder().decode(bytes);
             write(s);
+          },
+          crypto_get_random: (ptr, len) => {
+            const p = Number(ptr);
+            const l = Number(len);
+            if (!sharedMemory) {
+              write("ERROR: no memory yet");
+              return;
+            }
+            const bytes = new Uint8Array(sharedMemory.buffer, p, l);
+            crypto.getRandomValues(bytes);
           },
         },
       };

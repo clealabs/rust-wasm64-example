@@ -1,5 +1,6 @@
 // Guest: imports a host function `host_print(ptr: u64, len: u64)` from module "host"
 // and exports `run` which calls it with a pointer/length into the guest linear memory.
+use getrandom::Error;
 use std::panic;
 
 use cairo_air::{CairoProof, PreProcessedTraceVariant, verifier::verify_cairo};
@@ -35,28 +36,22 @@ pub fn hook(info: &panic::PanicHookInfo) {
     }
 }
 
+#[link(wasm_import_module = "host")]
+unsafe extern "C" {
+    fn crypto_get_random(ptr: u64, len: u64);
+}
+
 // https://docs.rs/getrandom/0.3.3/getrandom/#custom-backend
-use getrandom::Error;
 #[unsafe(no_mangle)]
-extern "Rust" fn __getrandom_v03_custom(dest: *mut u8, len: usize) -> Result<(), Error> {
-    if len == 0 {
-        return Ok(());
-    }
-    if dest.is_null() {
-        return Err(Error::UNSUPPORTED);
-    }
-
+unsafe extern "Rust" fn __getrandom_v03_custom(dest: *mut u8, len: usize) -> Result<(), Error> {
+    let buf = unsafe {
+        // fill the buffer with zeros
+        core::ptr::write_bytes(dest, 0, len);
+        // create mutable byte slice
+        core::slice::from_raw_parts_mut(dest, len)
+    };
     unsafe {
-        let buf = core::slice::from_raw_parts_mut(dest, len);
-        let mut s: u64 = 0x1234_5678_90ab_cdef; // fixed seed for deterministic output
-
-        for b in buf.iter_mut() {
-            // tiny xorshift; update state and take low byte
-            s ^= s << 13;
-            s ^= s >> 7;
-            s ^= s << 17;
-            *b = (s & 0xFF) as u8;
-        }
+        crypto_get_random(buf.as_ptr() as u64, buf.len() as u64);
     }
     Ok(())
 }
@@ -155,6 +150,18 @@ pub fn verify_is_prime_7() {
     assert!(verdict, "cairo proof verification failed");
 }
 
+pub fn test_crypto_get_random() {
+    let buf = [0u8; 32];
+    unsafe {
+        crypto_get_random(buf.as_ptr() as u64, buf.len() as u64);
+    }
+    assert!(!buf.iter().all(|&b| b == 0), "buf is all zeros");
+    unsafe {
+        let s = format!("{:?}", &buf);
+        host_print(s.as_ptr() as u64, s.len() as u64);
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn run() {
     panic::set_hook(Box::new(hook));
@@ -171,6 +178,7 @@ pub extern "C" fn run() {
     test_e2e();
     // prove_example();
     // verify_is_prime_7();
+    test_crypto_get_random();
 
     let msg = "Success!";
     unsafe {
