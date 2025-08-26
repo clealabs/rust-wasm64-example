@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::fs::read;
 use wasmtime::Caller;
 use wasmtime::Extern;
@@ -37,6 +37,27 @@ fn main() -> Result<()> {
 
             // print the string (safe to use lossy conversion)
             println!("{}", String::from_utf8_lossy(&buf));
+            Ok(())
+        },
+    )?;
+
+    // provide the host `crypto_get_random(ptr: u64, len: u64)` function in module "host"
+    linker.func_wrap(
+        "host",
+        "crypto_get_random",
+        |mut caller: Caller<'_, ()>, ptr: u64, len: u64| -> Result<()> {
+            let memory = match caller.get_export("memory") {
+                Some(Extern::Memory(m)) => m,
+                _ => return Err(anyhow!("module did not export memory")),
+            };
+
+            let mut buf = vec![0u8; len as usize];
+            getrandom::fill(&mut buf).map_err(|e| anyhow!("getrandom failed: {:?}", e))?;
+
+            memory
+                .write(&mut caller, ptr as usize, &buf)
+                .map_err(|e| anyhow!("memory write failed: {:?}", e))?;
+
             Ok(())
         },
     )?;
